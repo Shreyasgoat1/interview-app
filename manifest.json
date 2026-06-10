@@ -1,0 +1,18 @@
+{
+  "name": "Shreyas Interview Assistant",
+  "short_name": "Interview AI",
+  "description": "IoT Embedded Interview Assistant for Shreyas HM",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#00d9a3",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
