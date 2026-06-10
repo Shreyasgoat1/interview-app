@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Interview AI">
+<meta name="theme-color" content="#00d9a3">
+<title>Interview Assistant – Shreyas HM</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #0d1117; --surface: #161b22; --border: #21262d;
+  --accent: #00d9a3; --text: #e6edf3; --muted: #8b949e;
+  --user-bg: #1a2332; --ai-bg: #0f1f1a; --red: #ff4d4d;
+}
+html, body { height: 100%; height: 100dvh; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
+#app { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
+header { padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top)); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; flex-shrink: 0; }
+header h1 { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: 0.3px; }
+header small { font-size: 11px; color: var(--muted); margin-left: auto; }
+.tags { display: flex; gap: 6px; padding: 8px 12px; overflow-x: auto; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.tags::-webkit-scrollbar { display: none; }
+.tag { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; background: #1c2a23; border: 1px solid #2a3f32; color: var(--accent); cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.15s; -webkit-user-select: none; }
+.tag:active { background: var(--accent); color: var(--bg); transform: scale(0.96); }
+#chat { flex: 1; overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; -webkit-overflow-scrolling: touch; }
+.msg { max-width: 90%; padding: 10px 13px; border-radius: 14px; font-size: 14px; line-height: 1.6; animation: pop 0.18s ease; word-break: break-word; }
+.msg.user { align-self: flex-end; background: var(--user-bg); border: 1px solid #2a3d5a; border-bottom-right-radius: 4px; color: #cdd9e5; }
+.msg.ai { align-self: flex-start; background: var(--ai-bg); border: 1px solid #1e3d30; border-bottom-left-radius: 4px; }
+.msg.ai .lbl { font-size: 10px; color: var(--accent); margin-bottom: 5px; letter-spacing: 0.5px; font-weight: 600; }
+.msg.ai strong { color: var(--accent); }
+.typing { align-self: flex-start; padding: 12px 14px; background: var(--ai-bg); border: 1px solid #1e3d30; border-radius: 14px; border-bottom-left-radius: 4px; display: flex; gap: 5px; align-items: center; }
+.typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; animation: bounce 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+.input-bar { padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+textarea { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; color: var(--text); font-family: inherit; font-size: 15px; padding: 10px 13px; resize: none; outline: none; min-height: 44px; max-height: 110px; line-height: 1.45; transition: border-color 0.15s; -webkit-appearance: none; }
+textarea:focus { border-color: var(--accent); }
+textarea.listening { border-color: var(--red); }
+textarea::placeholder { color: var(--muted); }
+.btn { width: 44px; height: 44px; border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; -webkit-user-select: none; }
+.btn:active { transform: scale(0.92); }
+#micBtn { background: var(--surface); border: 1px solid var(--border); }
+#micBtn.listening { background: #1a0a0a; border-color: var(--red); box-shadow: 0 0 10px rgba(255,77,77,0.35); animation: micPulse 1s infinite; }
+#sendBtn { background: var(--accent); }
+#sendBtn:disabled { opacity: 0.35; }
+#micHint { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #1a0a0a; border: 1px solid var(--red); color: var(--red); font-size: 12px; padding: 7px 16px; border-radius: 20px; display: none; z-index: 99; white-space: nowrap; }
+#micHint.show { display: block; }
+#customQ { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+#customQ.show { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; width: 100%; max-width: 400px; }
+.modal h3 { color: var(--accent); font-size: 14px; margin-bottom: 12px; }
+.modal p { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+.modal textarea { width: 100%; margin-bottom: 12px; }
+.modal-btns { display: flex; gap: 8px; }
+.modal-btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; }
+.modal-btns .ok { background: var(--accent); color: var(--bg); }
+.modal-btns .cancel { background: var(--border); color: var(--text); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+@keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+@keyframes pop { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:scale(1)} }
+@keyframes micPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,77,77,0.4)} 50%{box-shadow:0 0 0 7px rgba(255,77,77,0)} }
+#chat::-webkit-scrollbar { width: 3px; }
+#chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="dot"></div>
+    <h1>INTERVIEW ASSISTANT</h1>
+    <small>Shreyas HM · IoT</small>
+  </header>
+  <div class="tags" id="tags"></div>
+  <div id="chat">
+    <div class="msg ai">
+      <div class="lbl">▸ READY</div>
+      Tap any question or use 🎙 mic. Instant answers — no internet needed! 🚀
+    </div>
+  </div>
+  <div id="micHint">🎙 Listening...</div>
+  <div id="customQ">
+    <div class="modal">
+      <h3>▸ CUSTOM QUESTION</h3>
+      <p>Type any question the interviewer asked that's not in the list:</p>
+      <textarea id="customInput" rows="3" placeholder="e.g. What is DMA in embedded systems?"></textarea>
+      <div class="modal-btns">
+        <button class="cancel" onclick="closeCustom()">Cancel</button>
+        <button class="ok" onclick="submitCustom()">Get Answer</button>
+      </div>
+    </div>
+  </div>
+  <div class="input-bar">
+    <textarea id="input" placeholder="Type or use mic..." rows="1" oninput="resize(this)" onkeydown="onKey(event)"></textarea>
+    <button class="btn" id="micBtn" onclick="toggleMic()">
+      <svg id="micIcon" width="18" height="18" viewBox="0 0 24 24" fill="#8b949e">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3zm-1 3a1 1 0 0 1 2 0v8a1 1 0 0 1-2 0V4zm6 8a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V21h-2v2h6v-2h-2v-2.07A7 7 0 0 0 19 12h-2z"/>
+      </svg>
+    </button>
+    <button class="btn" id="sendBtn" onclick="send()" disabled>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="#0d1117">
+        <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ─── ALL ANSWERS BUILT-IN (no API needed) ───────────────────────────────────
+const QA = {
+  "tell me about yourself": "I'm Shreyas H M, an ECE undergrad at PES Institute of Technology (VTU), passionate about **embedded systems and IoT**. I've built real projects on ESP32 using FreeRTOS, MQTT, REST APIs, and WebSockets. I'm actively learning STM32 and embedded Linux to grow into a strong firmware engineer.",
+
+  "introduce yourself": "I'm Shreyas H M, an ECE undergrad at PES Institute of Technology (VTU), passionate about **embedded systems and IoT**. I've built real projects on ESP32 using FreeRTOS, MQTT, REST APIs, and WebSockets. I'm actively learning STM32 and embedded Linux to grow into a strong firmware engineer.",
+
+  "freertos tasks vs threads": "In **FreeRTOS**, tasks are the basic unit of execution — each task has its own stack and runs independently, scheduled by the RTOS kernel. Unlike OS threads, FreeRTOS tasks on bare-metal MCUs share no virtual memory; the kernel uses queues and semaphores for safe communication. I used this in my IoT Gateway project — separate tasks for sensor polling, data processing, and MQTT publishing.",
+
+  "freertos": "**FreeRTOS** is a real-time operating system kernel for microcontrollers that provides task scheduling, semaphores, queues, and timers. I used it in my ESP32 IoT Gateway to run sensor polling, data processing, and network transmission as concurrent tasks synchronized via queues and semaphores. It ensures deterministic, real-time behavior even under heavy load.",
+
+  "mqtt vs http": "**MQTT** is a lightweight publish-subscribe protocol designed for IoT — it uses a broker, has minimal overhead, and supports QoS levels ideal for unreliable networks. HTTP is request-response, heavier, and not efficient for frequent small messages from constrained devices. In my IoT Gateway, I used MQTT to push sensor data to a broker while simultaneously serving a WebSocket dashboard.",
+
+  "mqtt": "**MQTT** is a lightweight publish-subscribe messaging protocol ideal for IoT devices on low-bandwidth or unreliable networks. It uses a broker — devices publish to topics, and subscribers receive messages without polling. I implemented MQTT over TCP/IP in my ESP32 IoT Gateway to stream sensor data to a broker in real time.",
+
+  "i2c vs spi vs uart": "**I2C** uses 2 wires and supports multiple devices with addressing — I used it for the DHT22 sensor. **SPI** is faster, full-duplex, uses 4 wires — I used it for the MPU6050 accelerometer and 74HC595 shift register. **UART** is simple point-to-point serial — I used it for the GPS module and GDB debugging. Each protocol suits different speed and wiring trade-offs.",
+
+  "interrupt handling": "An **interrupt** is a hardware signal that pauses the CPU to run an Interrupt Service Routine (ISR), then resumes normal execution. In embedded systems, ISRs must be short and fast — no blocking calls. I used interrupt-driven GPIO in my FreeRTOS IoT Gateway for event-triggered sensor reads, with semaphores to safely pass data from ISR to tasks.",
+
+  "strengths and weaknesses": "My strength is **hands-on problem solving** — I don't just study theory, I build real projects like a multi-sensor FreeRTOS gateway and a full REST API server on ESP32. My weakness is that I sometimes over-engineer solutions seeking perfection; I'm learning to ship working code first, then optimize.",
+
+  "strengths": "My biggest strength is **hands-on embedded programming** — I've built real projects on ESP32 covering FreeRTOS, MQTT, REST APIs, WebSockets, and PCB design, not just theory. I pick up new tools quickly and debug systematically using GCC/GDB.",
+
+  "weaknesses": "I sometimes spend too much time **optimizing code** before shipping a working version. I've been improving this by setting time-boxed milestones — get it working first, then refine.",
+
+  "freertos iot gateway project": "I built a **multi-sensor FreeRTOS IoT Gateway** on ESP32 with separate tasks for sensor polling, data processing, and network transmission, synchronized via queues and semaphores. I interfaced DHT22 over I2C, MPU6050 over SPI, and GPS over UART simultaneously, with RTC timestamping. Data was published to an MQTT broker over TCP/IP and visualized on a live WebSocket dashboard.",
+
+  "explain iot gateway": "I built a **multi-sensor FreeRTOS IoT Gateway** on ESP32 with separate tasks for sensor polling, data processing, and network transmission, synchronized via queues and semaphores. I interfaced DHT22 over I2C, MPU6050 over SPI, and GPS over UART simultaneously, with RTC timestamping. Data was published to an MQTT broker over TCP/IP and visualized on a live WebSocket dashboard.",
+
+  "why this embedded role": "I'm deeply interested in **firmware and IoT systems** — I've already built real projects using ESP32, FreeRTOS, MQTT, and REST APIs, not just academic work. I want to contribute to real-time embedded products and grow into STM32 and embedded Linux. This role aligns perfectly with where I'm heading.",
+
+  "why this role": "I'm deeply interested in **firmware and IoT systems** — I've already built real projects using ESP32, FreeRTOS, MQTT, and REST APIs, not just academic work. This role aligns with my skills and my goal of growing into STM32 and embedded Linux development.",
+
+  "what is a semaphore": "A **semaphore** is a synchronization primitive in RTOS used to signal between tasks or protect shared resources. A binary semaphore acts like a flag — one task gives it, another takes it. In my IoT Gateway, I used semaphores to safely pass sensor data from interrupt handlers to processing tasks without race conditions.",
+
+  "semaphore": "A **semaphore** is a synchronization primitive in RTOS used to signal between tasks or protect shared resources. A binary semaphore acts like a flag — one task gives it, another takes it. In my IoT Gateway, I used semaphores to safely pass sensor data from interrupt handlers to processing tasks without race conditions.",
+
+  "rest api project": "I built a full **REST API web server** on ESP32 handling GET, POST, and PUT — enabling remote sensor reads, config updates, and relay control over Wi-Fi. I added WebSocket for bidirectional real-time communication and secured it with HTTPS using self-signed certificates. FreeRTOS tasks handled concurrent HTTP requests without blocking the sensor loop.",
+
+  "explain rest api project": "I built a full **REST API web server** on ESP32 handling GET, POST, and PUT — enabling remote sensor reads, config updates, and relay control over Wi-Fi. I added WebSocket for bidirectional real-time communication and secured it with HTTPS using self-signed certificates. FreeRTOS tasks handled concurrent HTTP requests without blocking the sensor loop.",
+
+  "what is websocket": "**WebSocket** is a full-duplex communication protocol over TCP that keeps a persistent connection open, allowing the server to push data to the client without polling. In my REST API project, I implemented a WebSocket server on ESP32 to stream live sensor data to a browser dashboard in real time, far more efficient than repeated HTTP GET requests.",
+
+  "websocket": "**WebSocket** is a full-duplex communication protocol over TCP that keeps a persistent connection open, allowing the server to push data to the client without polling. In my REST API project, I implemented a WebSocket server on ESP32 to stream live sensor data to a browser dashboard in real time.",
+
+  "memory types in mcu": "MCUs have several **memory types**: Flash (non-volatile, stores firmware), SRAM (volatile, used for stack, heap, and global variables at runtime), and EEPROM (non-volatile, for small persistent config data). In my LED matrix project, I consciously used global arrays for frame buffers to avoid stack overflow, understanding the trade-offs between stack, heap, and global memory.",
+
+  "memory types": "MCUs have **Flash** (non-volatile, stores firmware), **SRAM** (volatile, runtime data — stack, heap, globals), and **EEPROM** (small persistent storage). In my LED matrix project, I used global arrays for frame buffers to avoid stack overflow, applying direct knowledge of memory layout in constrained embedded systems.",
+
+  "what is can protocol": "**CAN (Controller Area Network)** is a robust serial protocol designed for real-time communication in automotive and industrial systems, supporting multi-master communication with built-in error detection. I have conceptual knowledge of CAN — it uses differential signaling for noise immunity and priority-based arbitration. It's on my learning roadmap alongside STM32.",
+
+  "can protocol": "**CAN** is a robust multi-master serial protocol used in automotive and industrial systems with built-in error detection and priority-based arbitration. I have conceptual knowledge of CAN and it's on my active learning roadmap alongside STM32 and embedded Linux.",
+
+  "what is spi": "**SPI (Serial Peripheral Interface)** is a synchronous full-duplex protocol using 4 lines: MOSI, MISO, SCLK, and CS. It's faster than I2C but requires more wires and only supports one master. I used SPI in my LED matrix project for bit-banging data into 74HC595 shift registers and in my IoT Gateway for the MPU6050 accelerometer.",
+
+  "what is i2c": "**I2C** is a 2-wire synchronous protocol (SDA + SCL) supporting multiple devices on the same bus using unique addresses. It's slower than SPI but simpler to wire. I used I2C to interface the DHT22 temperature/humidity sensor in my FreeRTOS IoT Gateway project.",
+
+  "pcb design": "I designed a **1-layer PCB** in EasyEDA for an 8x8 LED matrix driven by chained 74HC595 shift registers, covering power rails, decoupling capacitors, and SPI headers. I validated the layout using DRC (Design Rule Check) and selected components based on datasheets. It gave me hands-on exposure to real hardware design beyond just firmware.",
+
+  "led matrix project": "I built an **8x8 LED matrix controller** on ESP32 with a custom PCB using 74HC595 shift registers. I implemented low-level SPI bit-banging in C without libraries, directly manipulating GPIO direction registers and meeting timing constraints. I scrolled text and animated patterns using frame buffers, applying knowledge of stack vs heap vs global memory.",
+
+  "what is tcp ip": "**TCP/IP** is the foundational networking stack — TCP provides reliable, ordered delivery; IP handles addressing and routing. In my IoT Gateway, I used TCP/IP as the transport layer for both MQTT (port 1883) and HTTP/HTTPS (port 80/443). Understanding the stack helped me debug connection issues and implement secure HTTPS with self-signed certificates.",
+
+  "what is uart": "**UART (Universal Asynchronous Receiver Transmitter)** is a simple point-to-point serial protocol using TX and RX lines with a pre-agreed baud rate. It requires no clock line, making it great for simple communication. I used UART to connect the GPS module in my IoT Gateway and for GDB debugging over serial.",
+
+  "c vs c++": "I use **C** for low-level hardware control — direct register manipulation, bit-banging, ISRs — where you need predictable, minimal overhead. I use **C++** for higher-level abstractions and OOP when building more complex systems. For embedded work like my ESP32 projects, I primarily use C with occasional C++ features from the Arduino/ESP-IDF frameworks.",
+
+  "what is rtos": "An **RTOS (Real-Time Operating System)** provides deterministic task scheduling, ensuring time-critical operations meet strict deadlines. Unlike a general-purpose OS, an RTOS has a tiny footprint and predictable context-switch times. I used FreeRTOS on ESP32 to run sensor polling, data processing, and network tasks concurrently with defined priorities.",
+
+  "what is gpio": "**GPIO (General Purpose Input/Output)** pins are configurable digital pins on a microcontroller used to read sensors or control actuators. You configure them as input or output by writing to direction registers. In my projects, I configured GPIO pins for interrupt-driven sensor reads and for SPI bit-banging on the LED matrix controller.",
+
+  "what is gdb": "**GDB (GNU Debugger)** is a debugger for C/C++ programs that lets you set breakpoints, inspect variables, and step through code. I used GDB over UART on my ESP32 IoT Gateway to debug firmware issues — it's far more powerful than printf debugging for tracking down race conditions and memory bugs.",
+
+  "where do you see yourself": "In 2-3 years, I see myself as a proficient **embedded firmware engineer** working on STM32/ARM Cortex-M devices and embedded Linux systems. I'm actively building toward that — currently deepening FreeRTOS skills and starting STM32. Long-term, I want to work on cutting-edge IoT products at scale.",
+
+  "why embedded systems": "I'm drawn to **embedded systems** because it's the intersection of hardware and software — you write code that directly controls the physical world. Building my FreeRTOS IoT Gateway and seeing real sensor data flow over MQTT in real time is incredibly satisfying. It's challenging, hands-on, and directly impactful.",
+
+  "salary expectation": "I'm a fresher focused on **learning and growing** in a strong team, so I'm flexible and open to industry-standard fresher compensation. The opportunity to work on real embedded products matters more to me right now than the exact number.",
+
+  "notice period": "I'm a **fresher** and available to join immediately — no notice period required.",
+
+  "available to join": "I'm available to **join immediately** — I'm a fresher with no notice period.",
+
+  "team work": "I believe in **clear communication and shared ownership** in a team. During my projects, I've documented my code well and used GitHub for version control so collaborators can understand my work easily. I adapt quickly to team workflows and enjoy learning from senior engineers.",
+
+  "how do you debug": "My debugging approach: first reproduce the issue consistently, then **isolate the module** causing it. I use GDB for stepping through firmware, serial logging for runtime state, and oscilloscope/logic analyzer concepts for hardware issues. In my IoT Gateway, I tracked a race condition using GDB breakpoints and FreeRTOS task state inspection.",
+};
+
+const TAGS_LIST = [
+  "Tell me about yourself",
+  "FreeRTOS tasks vs threads",
+  "MQTT vs HTTP",
+  "I2C vs SPI vs UART",
+  "Interrupt handling",
+  "Strengths and weaknesses",
+  "Explain IoT Gateway project",
+  "Why this embedded role?",
+  "What is a semaphore?",
+  "REST API project",
+  "What is WebSocket?",
+  "Memory types in MCU",
+  "PCB design",
+  "What is RTOS?",
+  "Where do you see yourself?",
+  "Why embedded systems?",
+  "Notice period",
+  "❓ Other question...",
+];
+
+function findAnswer(q) {
+  const clean = q.toLowerCase().trim();
+  // exact match first
+  if (QA[clean]) return QA[clean];
+  // partial match
+  for (const key of Object.keys(QA)) {
+    if (clean.includes(key) || key.includes(clean)) return QA[key];
+  }
+  // keyword match
+  const keywords = {
+    freertos: "freertos", mqtt: "mqtt", "i2c": "i2c vs spi vs uart",
+    spi: "what is spi", uart: "what is uart", interrupt: "interrupt handling",
+    semaphore: "semaphore", websocket: "what is websocket",
+    rest: "rest api project", pcb: "pcb design", led: "led matrix project",
+    tcp: "what is tcp ip", gpio: "what is gpio", gdb: "what is gdb",
+    rtos: "what is rtos", memory: "memory types in mcu", can: "can protocol",
+    salary: "salary expectation", join: "available to join",
+    notice: "notice period", team: "team work", debug: "how do you debug",
+    strength: "strengths", weakness: "weaknesses", yourself: "tell me about yourself",
+    introduce: "introduce yourself", project: "freertos iot gateway project",
+    gateway: "freertos iot gateway project",
+  };
+  for (const [kw, key] of Object.entries(keywords)) {
+    if (clean.includes(kw)) return QA[key];
+  }
+  return null;
+}
+
+// Build tags
+const tagContainer = document.getElementById('tags');
+TAGS_LIST.forEach(t => {
+  const el = document.createElement('div');
+  el.className = 'tag';
+  el.textContent = t;
+  el.onclick = () => {
+    if (t === "❓ Other question...") { openCustom(); return; }
+    send(t);
+  };
+  tagContainer.appendChild(el);
+});
+
+let recog = null;
+let isListening = false;
+
+function resize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+  document.getElementById('sendBtn').disabled = !el.value.trim();
+}
+
+function onKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+function addMsg(text, role) {
+  const chat = document.getElementById('chat');
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  if (role === 'ai') {
+    d.innerHTML = '<div class="lbl">▸ ANSWER</div>' + fmt(text);
+  } else { d.textContent = text; }
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function fmt(t) {
+  return t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+}
+
+function send(q) {
+  const inp = document.getElementById('input');
+  const question = (q || inp.value).trim();
+  if (!question) return;
+  inp.value = ''; inp.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+  addMsg(question, 'user');
+
+  // Simulate slight delay for UX
+  const chat = document.getElementById('chat');
+  const typing = document.createElement('div');
+  typing.className = 'typing';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+  chat.appendChild(typing);
+  chat.scrollTop = chat.scrollHeight;
+
+  setTimeout(() => {
+    typing.remove();
+    const answer = findAnswer(question);
+    if (answer) {
+      addMsg(answer, 'ai');
+    } else {
+      addMsg("I don't have a pre-loaded answer for that. Try rephrasing, or tap **❓ Other question...** to type it and I'll do my best to match. For completely new questions, prepare: define the term, link to your project experience, keep it 2-3 sentences.", 'ai');
+    }
+  }, 400);
+}
+
+function openCustom() {
+  document.getElementById('customQ').classList.add('show');
+  setTimeout(() => document.getElementById('customInput').focus(), 100);
+}
+function closeCustom() {
+  document.getElementById('customQ').classList.remove('show');
+  document.getElementById('customInput').value = '';
+}
+function submitCustom() {
+  const val = document.getElementById('customInput').value.trim();
+  closeCustom();
+  if (val) send(val);
+}
+
+function toggleMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { addMsg('Use Chrome on Android for mic support.', 'ai'); return; }
+  if (isListening) { recog?.stop(); return; }
+  recog = new SR();
+  recog.lang = 'en-IN';
+  recog.interimResults = true;
+  recog.continuous = false;
+  recog.onstart = () => {
+    isListening = true;
+    document.getElementById('micBtn').classList.add('listening');
+    document.getElementById('micIcon').setAttribute('fill', '#ff4d4d');
+    document.getElementById('micHint').classList.add('show');
+    document.getElementById('input').classList.add('listening');
+    document.getElementById('input').placeholder = '🎙 Speak now...';
+  };
+  recog.onresult = (e) => {
+    let txt = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript;
+    document.getElementById('input').value = txt;
+    resize(document.getElementById('input'));
+  };
+  recog.onend = () => {
+    isListening = false;
+    document.getElementById('micBtn').classList.remove('listening');
+    document.getElementById('micIcon').setAttribute('fill', '#8b949e');
+    document.getElementById('micHint').classList.remove('show');
+    document.getElementById('input').classList.remove('listening');
+    document.getElementById('input').placeholder = 'Type or use mic...';
+    const val = document.getElementById('input').value.trim();
+    if (val) send(val);
+  };
+  recog.onerror = (e) => {
+    isListening = false;
+    document.getElementById('micBtn').classList.remove('listening');
+    document.getElementById('micIcon').setAttribute('fill', '#8b949e');
+    document.getElementById('micHint').classList.remove('show');
+    document.getElementById('input').classList.remove('listening');
+    document.getElementById('input').placeholder = 'Type or use mic...';
+    if (e.error === 'not-allowed') {
+      addMsg('🎙 Allow mic: Android Settings → Apps → Chrome → Permissions → Microphone → Allow. Then reload.', 'ai');
+    }
+  };
+  recog.start();
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
